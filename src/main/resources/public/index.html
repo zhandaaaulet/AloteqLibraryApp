@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>Aloteq library CRUD App</title>
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+          integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+    <script src="https://unpkg.com/vue"></script>
+
+    <style>
+        #library {
+            margin: auto;
+            max-width: 800px;
+            padding: 2em 3em;
+        }
+
+        .container {
+            position: relative;
+            width: 90%;
+        }
+
+        .image {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 100%;
+            width: 100%;
+            opacity: 0;
+            transition: .5s ease;
+            background-color: #ebeff0;
+        }
+
+        .container:hover .overlay {
+            opacity: 1;
+        }
+
+        .text {
+            color: black;
+            font-size: 20px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            -ms-transform: translate(-50%, -50%);
+        }
+    </style>
+</head>
+<body>
+<div class="d-flex flex-column flex-md-row align-items-center p-3 px-md-4 mb-3 bg-white border-bottom shadow-sm"
+     th:fragment="header">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <img class="mean-fruit-gradient my-0 mr-md-auto font-weight-normal"
+         src="https://aloteq.com/image/logo.svg"
+    />
+    <nav class="my-2 my-md-0 mr-md-3">
+        <a class="p-2 text-dark" href="/">Main</a>
+        <a class="p-2 text-dark" href="#">My Profile</a>
+        <a class="p-2 text-dark" href="#">My Books</a>
+        <a class="p-2 text-dark" href="#">Catalog</a>
+        <a class="p-2 text-dark" href="#">Users</a>
+        <a class="p-2 text-dark" href="#">Add User</a>
+        <a class="p-2 text-dark" href="#">Add Book</a>
+        <a class="p-2 text-dark" href="#">About</a>
+    </nav>
+    <a class="btn btn-outline-primary" href="#">Sign in</a>
+    <a class="btn btn-outline-danger" href="#">Sign out</a>
+</div>
+
+<div class="container">
+    <img src="https://aloteq.com/opengraph-aloteq@1x.png">
+    <div class="overlay">
+        <div id="library" class="text">
+            <form class="form-inline">
+                <label for="form_search_author" style="width: 100px">
+                    <h3>Author</h3>
+                </label>
+                <input id="form_search_author" v-model="search_author" v-on:keyup.enter="filter" class="form-control mr-2"/>
+                <button @click.prevent="filter('author')" class="btn btn-primary">Filter</button>
+            </form>
+            <form class="form-inline mt-3">
+                <label for="form_search_title" style="width: 100px"><h3>Title</h3></label>
+                <input id="form_search_title" v-model="search_title" v-on:keyup.enter="filter" class="form-control mr-2"/>
+                <button @click.prevent="filter('title')" class="btn btn-primary">Filter</button>
+            </form>
+            <table id="items" class="table table-striped mt-3">
+                <thead>
+                <tr>
+                    <td>ID</td>
+                    <td>Title</td>
+                    <td>Author</td>
+                </tr>
+                </thead>
+                <tr v-for="item in items">
+                    <td>{{ item.id }}</td>
+                    <td>{{ item.title }}</td>
+                    <td>{{ item.author }}</td>
+                    <td>
+                        <button @click="remove(item.id)" class="btn btn-outline-danger btn-sm"> Delete</button>
+                        <button @click="edit(item)" class="btn btn-outline-warning btn-sm"> Edit</button>
+                    </td>
+                </tr>
+            </table>
+            <div class="text-center p-2" v-if="items.length === 0"><h4>No items</h4></div>
+            <form class="mt-4 container p-5 border">
+                <div class="form-group row">
+                    <label for="form_title" style="width: 100px"><h3>Title</h3></label>
+                    <input id="form_title" class="form-control col-sm-10" v-model="model.title"/>
+                </div>
+                <div class="form-group row">
+                    <label for="form_author" style="width: 100px"><h3>Author</h3></label>
+                    <input id="form_author" class="form-control col-sm-10" v-model="model.author"/>
+                </div>
+                <div class="row justify-content-center">
+                    <button @click.prevent="add" v-if="!editing" :disabled="!isValid" class="btn btn-primary mr-2"> Add</button>
+                    <button @click.prevent="update" v-if="editing" :disabled="!isValid" class="btn btn-primary mr-2"> Update
+                    </button>
+                    <button @click.prevent="cancel" v-if="editing" class="btn btn-danger"> Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<footer class="p-4 my-md-5 pt-md-5 border-top p" th:fragment="footer">
+    <div class="row">
+        <div class="col-12 col-md">
+            <small class="d-block mb-3 text-muted">© 2017-2020</small>
+        </div>
+        <div class="col-6 col-md">
+            <h5>Features</h5>
+            <ul class="list-unstyled text-small">
+                <li><a class="text-muted" href="#">Cool stuff</a></li>
+                <li><a class="text-muted" href="#">Random feature</a></li>
+                <li><a class="text-muted" href="#">Team feature</a></li>
+                <li><a class="text-muted" href="#">Stuff for developers</a></li>
+                <li><a class="text-muted" href="#">Another one</a></li>
+                <li><a class="text-muted" href="#">Last time</a></li>
+            </ul>
+        </div>
+        <div class="col-6 col-md">
+            <h5>Resources</h5>
+            <ul class="list-unstyled text-small">
+                <li><a class="text-muted" href="#">Resource</a></li>
+                <li><a class="text-muted" href="#">Resource name</a></li>
+                <li><a class="text-muted" href="#">Another resource</a></li>
+                <li><a class="text-muted" href="#">Final resource</a></li>
+            </ul>
+        </div>
+        <div class="col-6 col-md">
+            <h5>About</h5>
+            <ul class="list-unstyled text-small">
+                <li><a class="text-muted" href="#">Team</a></li>
+                <li><a class="text-muted" href="#">Locations</a></li>
+                <li><a class="text-muted" href="#">Privacy</a></li>
+                <li><a class="text-muted" href="#">Terms</a></li>
+            </ul>
+        </div>
+    </div>
+</footer>
+
+<script>
+    function getUrl(path) {
+        // return "http://localhost:8080/library" + (path || "")
+        return "/library" + (path || "")
+    }
+
+    const defaultModel = {
+        title: "",
+        author: "",
+    };
+    new Vue({
+        el: "#library",
+        data: function () {
+            return {
+                search_author: "",
+                search_title: "",
+                editing: false,
+                model: {
+                    id: -1,
+                    title: "",
+                    author: "",
+                },
+                items: [],
+            }
+        },
+
+        methods: {
+            async add() {
+                await fetch(getUrl(), {
+                    method: "POST",
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({...this.model, id: undefined})
+                });
+                await this.refresh();
+                this.model = {...defaultModel};
+            },
+            async remove(id) {
+                await fetch(getUrl(`/${id}`), {method: "DELETE"});
+                this.refresh();
+            },
+            edit(item) {
+                this.editing = true;
+                this.model = {...item}
+            },
+            async update() {
+                await fetch(getUrl(`/${this.model.id}`), {
+                    method: "PUT",
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(
+                        {...this.model, id: undefined}
+                    )
+                });
+                await this.refresh();
+                this.cancel();
+            },
+            cancel() {
+                this.editing = false;
+                this.model = {...defaultModel}
+            },
+            filter(type) {
+                let q = "";
+                if (type === 'author') {
+                    q = `author=${encodeURI(this.search_author)}`;
+                    this.search_title = "";
+                } else {
+                    q = `title=${encodeURI(this.search_title)}`;
+                    this.search_author = "";
+                }
+                fetch(getUrl(`/search?${q}`)).then((r) => {
+                    r.json().then((json) => {
+                        this.items = json;
+                    });
+                });
+            },
+            refresh() {
+                fetch(getUrl()).then((r) => {
+                    r.json().then((json) => {
+                        this.items = json;
+                    });
+                })
+            },
+        },
+
+        computed: {
+            isValid() {
+                return this.model.title && this.model.author;
+            },
+        },
+
+        async created() {
+            this.refresh();
+        },
+
+    })
+</script>
+</body>
+</html>
